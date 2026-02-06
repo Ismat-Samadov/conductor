@@ -15,7 +15,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from conductor.graph.client import Neo4jClient
 from conductor.config import TRANSFER_MAX_DISTANCE_METERS
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+DATA_DIR = os.path.join(os.path.dirname(os.path.
+dirname(os.path.abspath(__file__))), "data")
 
 
 def load_json(filename):
@@ -396,20 +397,13 @@ def ingest_transfers(client: Neo4jClient):
 
     result = client.run_query(
         """
-        MATCH (a:Stop)
+        MATCH (a:Stop), (b:Stop)
         WHERE a.location IS NOT NULL
-        WITH a
-        MATCH (b:Stop)
-        WHERE b.location IS NOT NULL
+          AND b.location IS NOT NULL
           AND a.id < b.id
           AND point.distance(a.location, b.location) <= $maxDist
-        // Exclude pairs already on the same bus route as consecutive stops
-        WHERE NOT EXISTS {
-            MATCH (a)-[:NEXT_STOP]->(b)
-        }
-        AND NOT EXISTS {
-            MATCH (b)-[:NEXT_STOP]->(a)
-        }
+          AND NOT (a)-[:NEXT_STOP]->(b)
+          AND NOT (b)-[:NEXT_STOP]->(a)
         WITH a, b, point.distance(a.location, b.location) AS dist
         MERGE (a)-[t:TRANSFER]->(b)
         SET t.walkingDistanceMeters = round(dist, 1),
