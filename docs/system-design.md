@@ -687,7 +687,7 @@ conductor/
 │       ├── __init__.py
 │       ├── routes.py             # FastAPI route handlers
 │       └── models.py             # Pydantic request/response models
-├── .env                          # NEO4J_URI, ANTHROPIC_API_KEY, etc.
+├── .env                          # NEO4J_HTTP_URL, GEMINI_API_KEY, etc.
 ├── .gitignore
 ├── requirements.txt
 └── pyproject.toml
@@ -699,13 +699,15 @@ conductor/
 
 ```env
 # Neo4j
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USER=neo4j
+NEO4J_URI=neo4j+s://<instance-id>.databases.neo4j.io
+NEO4J_HTTP_URL=https://<instance-id>.databases.neo4j.io/db/neo4j/query/v2
+NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=<password>
+NEO4J_DATABASE=neo4j
 
 # LLM
-ANTHROPIC_API_KEY=<key>
-MODEL_NAME=claude-sonnet-4-5-20250929
+GEMINI_API_KEY=<key>
+MODEL_NAME=gemini-2.5-flash
 
 # App
 APP_HOST=0.0.0.0
