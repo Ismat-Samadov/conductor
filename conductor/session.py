@@ -12,6 +12,7 @@ class Session:
     nearest_stops: list[dict] = field(default_factory=list)
     location_source: str = "unknown"  # "geolocation" | "manual" | "unknown"
     conversation_history: list[dict] = field(default_factory=list)
+    pending_destination: str | None = None  # saved when route_find needs location
     language: str = "az"
 
     @property

@@ -1,7 +1,9 @@
 """LLM response generation — takes graph context + user query → Azerbaijani response."""
 
+import time
 import httpx
 from google import genai
+from google.genai.errors import ClientError
 from conductor.config import GEMINI_API_KEY, MODEL_NAME, DISABLE_SSL_VERIFY
 from conductor.rag.prompts import (
     SYSTEM_PROMPT,
@@ -85,17 +87,23 @@ def generate_response(
         contents.extend(conversation_history)
     contents.append({"role": "user", "parts": [{"text": prompt}]})
 
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=contents,
-        config=genai.types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            temperature=0.3,
-            max_output_tokens=1024,
-        ),
-    )
-
-    return response.text.strip()
+    for attempt in range(2):
+        try:
+            response = client.models.generate_content(
+                model=MODEL_NAME,
+                contents=contents,
+                config=genai.types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    temperature=0.3,
+                    max_output_tokens=1024,
+                ),
+            )
+            return response.text.strip()
+        except ClientError as e:
+            if e.code == 429 and attempt == 0:
+                time.sleep(15)
+                continue
+            raise
 
 
 def generate_simple_response(

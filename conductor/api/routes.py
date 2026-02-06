@@ -110,8 +110,35 @@ def chat(req: ChatRequest):
     return ChatResponse(reply=reply, intent=intent, routes=routes)
 
 
+def _last_bot_asked_for_location(session) -> bool:
+    """Check if the last bot message was a location request."""
+    for msg in reversed(session.conversation_history):
+        if msg["role"] == "model":
+            text = msg["parts"][0]["text"]
+            return "yerinizi bilmirəm" in text or "geolokasiya göndərin" in text
+    return False
+
+
 def _process_chat(session, message: str) -> tuple[str, str, list]:
     """Parse intent and dispatch to handler. May raise ClientError on rate limit."""
+
+    # If bot just asked for location and user responds with a place name,
+    # treat it as origin for the pending route search (no Gemini call needed)
+    if _last_bot_asked_for_location(session) and session.pending_destination:
+        origin_stops = matcher.match(message)
+        if origin_stops:
+            dest_stops = matcher.match(session.pending_destination)
+            if dest_stops:
+                origin_ids = [s["id"] for s in origin_stops]
+                dest_ids = [s["id"] for s in dest_stops]
+                search_result = retriever.search_routes(origin_ids, dest_ids)
+                context = format_route_context(
+                    search_result, origin_stops[0]["name"], dest_stops[0]["name"]
+                )
+                reply = generate_response(message, context, session.conversation_history[:-1])
+                session.pending_destination = None  # clear after use
+                return reply, "route_find", search_result.get("routes", [])
+
     parsed = parse_intent(message)
     intent = parsed.get("intent", "general")
     entities = parsed.get("entities", {})
@@ -148,6 +175,7 @@ def _handle_route_find(
     # Resolve origin
     if origin_raw == "user_location" or not origin_raw:
         if not session.has_location:
+            session.pending_destination = dest_raw
             return ask_for_location(), []
         origin_stops = retriever.find_nearest_stops(
             session.latitude, session.longitude, limit=5

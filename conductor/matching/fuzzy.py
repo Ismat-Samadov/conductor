@@ -5,6 +5,18 @@ from conductor.graph import queries
 from conductor.matching.aliases import ALIASES
 from conductor.matching.transliterate import normalize, generate_variants
 
+# Azerbaijani dative/ablative suffixes to strip (longest first)
+_SUFFIXES = ("ndan", "ndən", "dan", "dən", "na", "nə", "ya", "yə", "a", "ə")
+
+
+def _suffix_variants(text: str) -> list[str]:
+    """Generate versions of text with common grammatical suffixes stripped."""
+    variants = [text]
+    for suffix in _SUFFIXES:
+        if text.endswith(suffix) and len(text) > len(suffix) + 2:
+            variants.append(text[:-len(suffix)])
+    return variants
+
 
 class StopMatcher:
     def __init__(self, client: Neo4jClient):
@@ -14,17 +26,13 @@ class StopMatcher:
         """
         Resolve user text to a list of candidate stops.
         Tries: alias lookup → exact contains → variant contains.
+        Also tries stripping Azerbaijani grammatical suffixes.
         Returns list of {id, name, code, latitude, longitude, isTransportHub}.
         """
         text = normalize(user_input)
 
-        # 1. Check aliases first (also try transliteration variants)
-        search_terms = ALIASES.get(text)
-        if not search_terms:
-            for variant in generate_variants(text):
-                search_terms = ALIASES.get(variant)
-                if search_terms:
-                    break
+        # 1. Check aliases first (also try transliteration variants + suffix-stripped)
+        search_terms = self._alias_lookup(text)
         if search_terms:
             results = []
             for term in search_terms:
@@ -36,24 +44,38 @@ class StopMatcher:
             if results:
                 return _dedupe(results, limit)
 
-        # 2. Direct search with normalized input
-        results = self.client.run_query(
-            queries.FIND_STOPS_BY_NAME,
-            {"name": text, "limit": limit},
-        )
-        if results:
-            return results
-
-        # 3. Try all transliteration variants
-        for variant in generate_variants(text):
+        # 2. Direct search with normalized input (+ suffix-stripped variants)
+        for form in _suffix_variants(text):
             results = self.client.run_query(
                 queries.FIND_STOPS_BY_NAME,
-                {"name": variant, "limit": limit},
+                {"name": form, "limit": limit},
             )
             if results:
                 return results
 
+        # 3. Try all transliteration variants (+ suffix-stripped)
+        for form in _suffix_variants(text):
+            for variant in generate_variants(form):
+                results = self.client.run_query(
+                    queries.FIND_STOPS_BY_NAME,
+                    {"name": variant, "limit": limit},
+                )
+                if results:
+                    return results
+
         return []
+
+    def _alias_lookup(self, text: str) -> list[str] | None:
+        """Look up aliases trying original, suffix-stripped, and transliterated forms."""
+        for form in _suffix_variants(text):
+            terms = ALIASES.get(form)
+            if terms:
+                return terms
+            for variant in generate_variants(form):
+                terms = ALIASES.get(variant)
+                if terms:
+                    return terms
+        return None
 
     def match_near(
         self, user_input: str, lat: float, lng: float, limit: int = 5
