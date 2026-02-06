@@ -4,6 +4,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -59,6 +60,16 @@ async def health():
     """Render and other PaaS use HEAD / for health checks."""
     return Response(status_code=200)
 
+
+@app.get("/favicon.ico")
+@app.get("/apple-touch-icon.png")
+@app.get("/apple-touch-icon-precomposed.png")
+async def favicon():
+    """Browsers request these standard paths; serve our SVG favicon."""
+    return FileResponse(
+        str(BASE_DIR / "static" / "favicon.svg"),
+        media_type="image/svg+xml",
+    )
 
 
 if __name__ == "__main__":
