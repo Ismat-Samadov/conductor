@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Conductor — Bakı Avtobus Köməkçisi</title>
+    <meta name="description" content="Bakı ictimai nəqliyyat marşrutları, dayanacaqlar və avtobus məlumatları">
+    <meta name="theme-color" content="#1a73e8">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin="" />
+
+    <!-- Google Fonts — Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- App CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+</head>
+<body>
+
+    <!-- ════════════════════════════════════════════════════════
+         Location Permission Modal
+         ════════════════════════════════════════════════════════ -->
+    <div id="location-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-icon">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+                </svg>
+            </div>
+            <h2>Conductor</h2>
+            <p class="modal-subtitle">Bakı avtobus köməkçisi</p>
+            <p class="modal-desc">
+                Yaxınlığınızdakı dayanacaqları göstərmək üçün yerinizi bilməyimiz lazımdır.
+            </p>
+            <button id="btn-allow-location" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="margin-right:6px">
+                    <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+                </svg>
+                Yeri paylaş
+            </button>
+            <button id="btn-skip-location" class="btn btn-secondary">Sonra</button>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════
+         Main Application
+         ════════════════════════════════════════════════════════ -->
+    <div id="app" class="app-container hidden">
+
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+                </svg>
+                <h1>Conductor</h1>
+            </div>
+            <div class="header-right">
+                <button id="btn-toggle-map" class="btn-icon" title="Xəritəni göstər/gizlə">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>
+                    </svg>
+                </button>
+                <button id="btn-my-location" class="btn-icon" title="Məkanım">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Content: Chat + Map -->
+        <main class="content-area">
+
+            <!-- Chat Panel -->
+            <section class="chat-panel">
+                <div id="chat-messages" class="messages-container">
+                    <!-- Messages injected by JS -->
+                </div>
+
+                <!-- Typing indicator -->
+                <div id="typing-indicator" class="typing-indicator hidden">
+                    <div class="message__avatar" style="background:#e8f0fe;color:#1a73e8;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                            <path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+                        </svg>
+                    </div>
+                    <div class="typing-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+
+                <!-- Input -->
+                <div class="chat-input-area">
+                    <form id="chat-form">
+                        <input type="text"
+                               id="chat-input"
+                               placeholder="Sualınızı yazın..."
+                               autocomplete="off"
+                               autofocus />
+                        <button type="submit" id="btn-send" title="Göndər">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Map Panel -->
+            <section id="map-panel" class="map-panel">
+                <div id="map" class="map-container"></div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+
+    <!-- App JS -->
+    <script src="{{ url_for('static', path='js/app.js') }}"></script>
+
+</body>
+</html>

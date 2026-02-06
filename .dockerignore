@@ -1,0 +1,14 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+.env
+.claude/
+data/
+docs/
+scripts/
+*.md
+nul

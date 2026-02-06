@@ -1,12 +1,19 @@
 """Conductor — Bakı ictimai nəqliyyat Graph RAG API."""
 
+from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 from conductor.config import APP_HOST, APP_PORT
 from conductor.graph.client import Neo4jClient
 from conductor.api.routes import router, init_services
+
+BASE_DIR = Path(__file__).resolve().parent
+
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 @asynccontextmanager
@@ -37,7 +44,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+
 app.include_router(router)
+
+
+@app.get("/")
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 if __name__ == "__main__":
