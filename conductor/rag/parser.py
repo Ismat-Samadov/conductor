@@ -3,7 +3,7 @@
 import json
 import httpx
 from google import genai
-from conductor.config import GEMINI_API_KEY, MODEL_NAME
+from conductor.config import GEMINI_API_KEY, MODEL_NAME, DISABLE_SSL_VERIFY
 from conductor.rag.prompts import INTENT_PARSE_PROMPT
 
 
@@ -17,6 +17,10 @@ def _get_client():
             api_key=GEMINI_API_KEY,
             http_options={"api_version": "v1beta"},
         )
+        if DISABLE_SSL_VERIFY:
+            # Corporate proxy injects self-signed certs; disable SSL verification.
+            # URL, headers, timeout are passed per-request by the SDK, so this is safe.
+            _client._api_client._httpx_client = httpx.Client(verify=False)
     return _client
 
 

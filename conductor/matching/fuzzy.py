@@ -18,8 +18,13 @@ class StopMatcher:
         """
         text = normalize(user_input)
 
-        # 1. Check aliases first
+        # 1. Check aliases first (also try transliteration variants)
         search_terms = ALIASES.get(text)
+        if not search_terms:
+            for variant in generate_variants(text):
+                search_terms = ALIASES.get(variant)
+                if search_terms:
+                    break
         if search_terms:
             results = []
             for term in search_terms:

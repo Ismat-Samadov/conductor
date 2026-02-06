@@ -1,7 +1,8 @@
 """LLM response generation — takes graph context + user query → Azerbaijani response."""
 
+import httpx
 from google import genai
-from conductor.config import GEMINI_API_KEY, MODEL_NAME
+from conductor.config import GEMINI_API_KEY, MODEL_NAME, DISABLE_SSL_VERIFY
 from conductor.rag.prompts import (
     SYSTEM_PROMPT,
     ROUTE_CONTEXT_TEMPLATE,
@@ -19,6 +20,8 @@ def _get_client():
             api_key=GEMINI_API_KEY,
             http_options={"api_version": "v1beta"},
         )
+        if DISABLE_SSL_VERIFY:
+            _client._api_client._httpx_client = httpx.Client(verify=False)
     return _client
 
 

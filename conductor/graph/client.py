@@ -3,10 +3,10 @@
 import requests
 import urllib3
 from base64 import b64encode
-from conductor.config import NEO4J_HTTP_URL, NEO4J_USERNAME, NEO4J_PASSWORD
+from conductor.config import NEO4J_HTTP_URL, NEO4J_USERNAME, NEO4J_PASSWORD, DISABLE_SSL_VERIFY
 
-# Suppress SSL warnings for corporate proxy environments
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+if DISABLE_SSL_VERIFY:
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class Neo4jClient:
@@ -41,7 +41,7 @@ class Neo4jClient:
             json=payload,
             headers=self._headers,
             timeout=120,
-            verify=False,  # Corporate proxy injects self-signed certs
+            verify=not DISABLE_SSL_VERIFY,
         )
 
         if resp.status_code != 200 and resp.status_code != 202:

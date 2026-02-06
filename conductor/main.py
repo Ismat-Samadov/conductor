@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -52,6 +52,13 @@ app.include_router(router)
 @app.get("/")
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.head("/")
+async def health():
+    """Render and other PaaS use HEAD / for health checks."""
+    return Response(status_code=200)
+
 
 
 if __name__ == "__main__":

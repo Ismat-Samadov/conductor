@@ -1,6 +1,8 @@
 """FastAPI route handlers — the HTTP layer."""
 
+import time
 from fastapi import APIRouter, HTTPException
+from google.genai.errors import ClientError
 
 from conductor.api.models import (
     SessionStartRequest,
@@ -94,33 +96,45 @@ def chat(req: ChatRequest):
 
     session.add_user_message(req.message)
 
-    # Parse intent
-    parsed = parse_intent(req.message)
+    try:
+        reply, intent, routes = _process_chat(session, req.message)
+    except ClientError as e:
+        if e.code == 429:
+            reply = "Sorğu limiti aşılıb. Zəhmət olmasa, 1 dəqiqə gözləyin və yenidən cəhd edin."
+            intent = "error"
+            routes = []
+        else:
+            raise
+
+    session.add_model_message(reply)
+    return ChatResponse(reply=reply, intent=intent, routes=routes)
+
+
+def _process_chat(session, message: str) -> tuple[str, str, list]:
+    """Parse intent and dispatch to handler. May raise ClientError on rate limit."""
+    parsed = parse_intent(message)
     intent = parsed.get("intent", "general")
     entities = parsed.get("entities", {})
 
-    # Handle by intent
     if intent == "route_find":
-        reply, routes = _handle_route_find(session, req.message, entities)
+        reply, routes = _handle_route_find(session, message, entities)
     elif intent == "bus_info":
-        reply, routes = _handle_bus_info(req.message, entities)
+        reply, routes = _handle_bus_info(message, entities)
     elif intent == "stop_info":
-        reply, routes = _handle_stop_info(req.message, entities)
+        reply, routes = _handle_stop_info(message, entities)
     elif intent == "nearby_stops":
-        reply, routes = _handle_nearby_stops(session, req.message)
+        reply, routes = _handle_nearby_stops(session, message)
     elif intent in ("fare_info", "schedule_info"):
-        reply, routes = _handle_bus_info(req.message, entities)
+        reply, routes = _handle_bus_info(message, entities)
     else:
         reply = generate_response(
-            req.message,
+            message,
             "Ümumi sual. Bakı ictimai nəqliyyat sistemi haqqında cavab ver.",
             session.conversation_history[:-1],
         )
         routes = []
 
-    session.add_model_message(reply)
-
-    return ChatResponse(reply=reply, intent=intent, routes=routes)
+    return reply, intent, routes
 
 
 # ── Intent handlers ─────────────────────────────────
