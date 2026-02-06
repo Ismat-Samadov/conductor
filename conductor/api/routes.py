@@ -288,10 +288,22 @@ def _handle_nearby_stops(session: Session, message: str) -> tuple[str, list]:
 
 # ── Utility endpoints ───────────────────────────────
 
+@router.get("/api/stops")
+def all_stops():
+    stops = retriever.find_all_stops()
+    return {"stops": stops}
+
+
 @router.get("/api/stops/nearby", response_model=NearbyStopsResponse)
 def nearby_stops(lat: float, lng: float, radius: int = 500):
     stops = retriever.find_nearest_stops(lat, lng, radius=radius)
     return NearbyStopsResponse(stops=stops)
+
+
+@router.get("/api/stops/{stop_id}/buses")
+def buses_at_stop(stop_id: int):
+    buses = retriever.find_buses_at_stop(stop_id)
+    return {"buses": buses}
 
 
 @router.get("/api/bus/{number}")

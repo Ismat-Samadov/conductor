@@ -11,6 +11,9 @@ class GraphRetriever:
 
     # ── Stop resolution ──────────────────────────────
 
+    def find_all_stops(self) -> list[dict]:
+        return self.client.run_query(queries.FIND_ALL_STOPS, {})
+
     def find_stops_by_name(self, name: str, limit: int = 5) -> list[dict]:
         normalized = name.strip().lower()
         return self.client.run_query(

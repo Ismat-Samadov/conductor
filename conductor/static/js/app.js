@@ -67,22 +67,112 @@
         map.setView([lat, lng], 15);
     }
 
-    function showStopsOnMap(stops) {
+    // All-stops layer (persistent, loaded once)
+    let clusterGroup = null;
+
+    function loadAllStops() {
+        API.getAllStops().then((stops) => {
+            if (!stops || stops.length === 0) return;
+
+            clusterGroup = L.markerClusterGroup({
+                maxClusterRadius: 40,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: false,
+                disableClusteringAtZoom: 16,
+                iconCreateFunction: function (cluster) {
+                    const count = cluster.getChildCount();
+                    let size = "small";
+                    if (count > 50) size = "large";
+                    else if (count > 20) size = "medium";
+                    return L.divIcon({
+                        html: `<div class="cluster-icon cluster-icon--${size}"><span>${count}</span></div>`,
+                        className: "stop-cluster",
+                        iconSize: [40, 40],
+                    });
+                },
+            });
+
+            const defaultIcon = L.divIcon({
+                className: "stop-marker",
+                html: '<div class="stop-dot"></div>',
+                iconSize: [18, 18],
+                iconAnchor: [9, 9],
+            });
+
+            const hubIcon = L.divIcon({
+                className: "stop-marker",
+                html: '<div class="stop-dot stop-dot--hub"></div>',
+                iconSize: [22, 22],
+                iconAnchor: [11, 11],
+            });
+
+            stops.forEach((stop) => {
+                if (!stop.latitude || !stop.longitude) return;
+                const icon = stop.isTransportHub ? hubIcon : defaultIcon;
+                const marker = L.marker([stop.latitude, stop.longitude], { icon });
+
+                // Lazy-load bus list on popup open
+                marker.bindPopup(() => buildStopPopup(stop), { minWidth: 180, maxWidth: 280 });
+
+                clusterGroup.addLayer(marker);
+            });
+
+            map.addLayer(clusterGroup);
+        });
+    }
+
+    function buildStopPopup(stop) {
+        const container = document.createElement("div");
+        container.className = "stop-popup";
+        container.innerHTML =
+            `<div class="stop-popup__name">${escHtml(stop.name || "Dayanacaq")}</div>` +
+            (stop.code ? `<div class="stop-popup__code">Kod: ${escHtml(stop.code)}</div>` : "") +
+            `<div class="stop-popup__buses" id="popup-buses-${stop.id}">Yüklənir...</div>`;
+
+        // Fetch buses asynchronously
+        API.getBusesAtStop(stop.id).then((buses) => {
+            const el = container.querySelector(`#popup-buses-${stop.id}`);
+            if (!el) return;
+            if (buses.length === 0) {
+                el.textContent = "Avtobus tapılmadı";
+                return;
+            }
+            el.innerHTML = buses
+                .map((b) =>
+                    `<span class="stop-popup__bus" data-bus="${b.number}">#${escHtml(b.number)}</span>`
+                )
+                .join(" ");
+
+            // Make bus chips clickable
+            el.querySelectorAll(".stop-popup__bus").forEach((chip) => {
+                chip.addEventListener("click", () => {
+                    const num = chip.dataset.bus;
+                    chatInput.value = `${num} nömrəli avtobus`;
+                    sendMessage(chatInput.value);
+                    map.closePopup();
+                });
+            });
+        });
+
+        return container;
+    }
+
+    function showStopsOnMap(stops, fitBounds = true) {
         stopMarkers.forEach((m) => map.removeLayer(m));
         stopMarkers = [];
 
         if (!stops || stops.length === 0) return;
 
-        const busIcon = L.divIcon({
+        const highlightIcon = L.divIcon({
             className: "stop-marker",
-            html: '<div class="stop-dot"></div>',
-            iconSize: [12, 12],
-            iconAnchor: [6, 6],
+            html: '<div class="stop-dot stop-dot--highlight"></div>',
+            iconSize: [22, 22],
+            iconAnchor: [11, 11],
         });
 
         stops.forEach((stop) => {
             if (!stop.latitude || !stop.longitude) return;
-            const marker = L.marker([stop.latitude, stop.longitude], { icon: busIcon })
+            const marker = L.marker([stop.latitude, stop.longitude], { icon: highlightIcon })
                 .addTo(map)
                 .bindPopup(
                     `<b>${escHtml(stop.name || "Dayanacaq")}</b>` +
@@ -91,12 +181,14 @@
             stopMarkers.push(marker);
         });
 
-        const points = stops
-            .filter((s) => s.latitude && s.longitude)
-            .map((s) => [s.latitude, s.longitude]);
-        if (state.latitude) points.push([state.latitude, state.longitude]);
-        if (points.length > 0) {
-            map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 16 });
+        if (fitBounds) {
+            const points = stops
+                .filter((s) => s.latitude && s.longitude)
+                .map((s) => [s.latitude, s.longitude]);
+            if (state.latitude) points.push([state.latitude, state.longitude]);
+            if (points.length > 0) {
+                map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 16 });
+            }
         }
     }
 
@@ -146,6 +238,20 @@
             const res = await fetch(`/api/bus/${encodeURIComponent(number)}`);
             if (!res.ok) return null;
             return res.json();
+        },
+
+        async getAllStops() {
+            const res = await fetch("/api/stops");
+            if (!res.ok) return [];
+            const data = await res.json();
+            return data.stops || [];
+        },
+
+        async getBusesAtStop(stopId) {
+            const res = await fetch(`/api/stops/${stopId}/buses`);
+            if (!res.ok) return [];
+            const data = await res.json();
+            return data.buses || [];
         },
     };
 
@@ -362,6 +468,7 @@
     // ── Event Listeners ──────────────────────────────────────
     document.addEventListener("DOMContentLoaded", () => {
         initMap();
+        loadAllStops();
 
         // Location modal — Allow
         btnAllowLocation.addEventListener("click", async () => {

@@ -484,12 +484,117 @@ html, body {
 }
 
 .stop-dot {
-    width: 12px;
-    height: 12px;
+    width: 18px;
+    height: 18px;
     background: var(--primary);
-    border: 2px solid white;
+    border: 2.5px solid white;
     border-radius: 50%;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    box-shadow: 0 1px 5px rgba(0,0,0,0.35);
+    transition: transform 0.15s;
+}
+
+.stop-dot:hover {
+    transform: scale(1.3);
+}
+
+.stop-dot--hub {
+    width: 22px;
+    height: 22px;
+    background: var(--success);
+    border: 3px solid white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.stop-dot--highlight {
+    width: 22px;
+    height: 22px;
+    background: var(--error);
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(234,67,53,0.5);
+    animation: pulse 1.5s ease infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 2px 8px rgba(234,67,53,0.5); }
+    50% { box-shadow: 0 2px 16px rgba(234,67,53,0.8); }
+}
+
+/* Stop popup */
+.stop-popup__name {
+    font-weight: 700;
+    font-size: 0.9375rem;
+    margin-bottom: 2px;
+    color: var(--text-primary);
+}
+
+.stop-popup__code {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    margin-bottom: 6px;
+}
+
+.stop-popup__buses {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.stop-popup__bus {
+    display: inline-block;
+    background: var(--primary-light);
+    color: var(--primary);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.stop-popup__bus:hover {
+    background: var(--primary);
+    color: white;
+}
+
+/* Cluster markers */
+.stop-cluster {
+    background: none;
+    border: none;
+}
+
+.cluster-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: white;
+    font-family: var(--font);
+    font-weight: 700;
+    font-size: 0.8125rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.cluster-icon--small {
+    width: 36px;
+    height: 36px;
+    background: var(--primary);
+}
+
+.cluster-icon--medium {
+    width: 42px;
+    height: 42px;
+    background: var(--primary-dark);
+    font-size: 0.875rem;
+}
+
+.cluster-icon--large {
+    width: 48px;
+    height: 48px;
+    background: #0d47a1;
+    font-size: 0.9375rem;
 }
 
 /* Bus link in messages */

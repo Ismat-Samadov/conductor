@@ -25,6 +25,15 @@ ORDER BY dist
 LIMIT $limit
 """
 
+FIND_ALL_STOPS = """
+MATCH (s:Stop)
+WHERE s.latitude IS NOT NULL AND s.longitude IS NOT NULL
+RETURN s.id AS id, s.name AS name, s.code AS code,
+       s.latitude AS latitude, s.longitude AS longitude,
+       s.isTransportHub AS isTransportHub
+ORDER BY s.name
+"""
+
 # ── Bus lookups ───────────────────────────────────────
 
 FIND_BUS_BY_NUMBER = """
